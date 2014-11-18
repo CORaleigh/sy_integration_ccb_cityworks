@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><sy:switchyard xmlns:sy="urn:switchyard-config:switchyard:2.0" xmlns="urn:switchyard-config:switchyard:2.0" xmlns:bean="urn:switchyard-component-bean:config:2.0" xmlns:resteasy="urn:switchyard-component-resteasy:config:2.0" xmlns:sca="http://docs.oasis-open.org/ns/opencsa/sca/200912" name="cw_fa_from_ccb" targetNamespace="urn:com.example.switchyard:cw_fa_from_ccb:1.0">
+    <sca:composite name="cw_fa_from_ccb" targetNamespace="urn:com.example.switchyard:cw_fa_from_ccb:1.0">
+        <sca:service name="HandleCCBFADataInterface" promote="HandleCCBFADataInterfaceBean_Impl/HandleCCBFADataInterface">
+            <sca:interface.java interface="com.example.switchyard.cw_fa_from_ccb.HandleCCBFADataInterface"/>
+            <resteasy:binding.rest name="SOARestCCBurl">
+                <resteasy:interfaces>com.example.switchyard.cw_fa_from_ccb.HandleCCBFADataInterfaceResource</resteasy:interfaces>
+                <resteasy:contextPath>ccbxmlbody</resteasy:contextPath>
+            </resteasy:binding.rest>
+        </sca:service>
+        <sca:reference multiplicity="0..1" name="InvokeCWCreateWOServiceInterface" promote="HandleCCBFADataInterfaceBean_Impl/InvokeCWCreateWOServiceInterface">
+            <sca:interface.java interface="com.example.switchyard.cw_fa_from_ccb.InvokeCWCreateWOServiceInterface"/>
+            <resteasy:binding.rest name="rest1">
+                <resteasy:interfaces>com.example.switchyard.cw_fa_from_ccb.InvokeCWCreateWOServiceInterface</resteasy:interfaces>
+                <resteasy:address>http://rhsoatstapp1:8080/switchyard-meter/createwo</resteasy:address>
+            </resteasy:binding.rest>
+        </sca:reference>
+        <sca:component name="HandleCCBFADataInterfaceBean_Impl">
+            <bean:implementation.bean class="com.example.switchyard.cw_fa_from_ccb.HandleCCBFADataInterfaceBean_Impl"/>
+            <sca:service name="HandleCCBFADataInterface">
+                <sca:interface.java interface="com.example.switchyard.cw_fa_from_ccb.HandleCCBFADataInterface"/>
+            </sca:service>
+            <sca:reference name="InvokeCWCreateWOServiceInterface">
+                <sca:interface.java interface="com.example.switchyard.cw_fa_from_ccb.InvokeCWCreateWOServiceInterface"/>
+            </sca:reference>
+        </sca:component>
+    </sca:composite>
+</sy:switchyard>
