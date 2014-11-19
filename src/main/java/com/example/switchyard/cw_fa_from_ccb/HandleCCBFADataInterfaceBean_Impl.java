@@ -291,7 +291,7 @@ public class HandleCCBFADataInterfaceBean_Impl implements
 				     .add("cityLimit", request.getCityLimit())
 				     .add("useClass", request.getUseClass())
 				     .add("postal", request.getZipCode())
-				     .add("faRemark", factory.createObjectBuilder().add("code","X-NOTES-CM")) // set this to null, only get this from CW
+				     .add("faRemark", factory.createObjectBuilder().addNull("code")) // set this to null, only get this from CW
 				     .add("spSourceStatus", factory.createObjectBuilder().add("code","C")) // need to send the code, not the descr
 				     .add("disconnectLocation", factory.createObjectBuilder().add("code","METR"))
 				     .addNull("adjustmentType")
