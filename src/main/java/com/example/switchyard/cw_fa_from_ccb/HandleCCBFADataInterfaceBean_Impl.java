@@ -160,70 +160,146 @@ public class HandleCCBFADataInterfaceBean_Impl implements
 			Unmarshaller unmarshaller = jaxc.createUnmarshaller();
 			StringReader reader = new StringReader(messagebody);
 			RequestMessage request = (RequestMessage) unmarshaller.unmarshal(reader);
-			
-			String FAType = request.getFAType();
-			String instructions = request.getInstructions();
-			System.out.println(FAType + " " + instructions);
-			
-			
+						
 			//  Cityworks expects json, so we need to convert CCB xml to json
-			//  Build the json object from the unmarshalled xml message from CCB
+			//  Build the json object from the unmarshalled xml message from CCB		
+			
+			/*meterHeader
+			fieldActivityId
+			fieldActivityType
+			code
+			customerName
+			customerPhone
+			lifeSupport
+			currentMeter
+			meterId
+			removeMeter
+			performDeviceTest
+			compoundMeter
+			readDateTime
+			size
+			code
+			register1
+			reading
+			dials
+			miu
+			readType
+			mrSource
+			size
+			lowReadThreshold
+			highReadThreshold
+			register2
+			deviceTest
+			installMeter
+			streetAddress
+			faInstructions
+			faComments
+			spLocationDetails
+			spType
+			premiseType
+			township
+			cityLimit
+			useClass
+			postal
+			faRemark
+			spSourceStatus
+			disconnectLocation
+			adjustmentType
+			letterValue
+			toDoValue
+			workOrderId
+			workOrder
+			description
+			supervisor
+			requestedBy
+			initiatedBy
+			initiateDate
+			location
+			projectStartDate
+			projectFinishDate
+			priority
+			numDaysBefore
+			woCategory
+			status
+			woTemplateId
+			woAddress
+			woXCoordinate
+			woYCoordinate*/
+			
+			// for deletewo - aka cancelling fa - pass in a woID - doesn't have to even be json, just pass in the ID
+			// question for Jay - do we remove wo altogether, or just put in a cancelled status
+			// if we have a legit status in CW, all we need to do is update status to Cancel.
+			// don't need to use deletewo at all.
+			
+			// need to add lifesupport, if it's null, it's considered false
+			// need to add meterid
+			// current meter is only required for certain FA's
+			// need to add meter size code
+			// need to add readType - what is this? 
+			// need to add meterRead source
+			// we have register ID in our xml, but Mike doesn't seem to need it, does he?
+			// deviceTest will always be null
+			// is registersize == A the same as meter size
+			// add field length and type for each as well
+			// spLocationDetails - do we need to send this from CCB? or do we just get this back from CW
+			// SPType is not being used in JSON, Mike's not doing anything with it yet.
+			// Should we send Premise Type Code instead of descr? for same thing for UseClass 
+			// Need to add code for spSourceStatus or we can just get the first character
+			// need to add dials.
+			// we are not passing disconnect location, should we?
+			// workOrderId is always null on createwo
+			// Jay - woTemplateId ,will we need to look this up?
+   		    // .add("status", request.getStatus()) - need a crosswalk here?  "Initiated" vs. "Pending" this might bomb out b/c 	
 
 			Map config = new HashMap();
 			JsonBuilderFactory factory = Json.createBuilderFactory(config);
-			String meterHeader = "meterHeader";
 			JsonObject value = factory.createObjectBuilder()
-					.add(meterHeader,  factory.createObjectBuilder()
-				     .add("fieldActivityId", request.getFieldActivityId())
+					.add("meterHeader",  factory.createObjectBuilder()
+				     .add("fieldActivityId", request.getFieldActivityId()) 
 				     .add("fieldActivityType", factory.createObjectBuilder()
 				     .add("code", request.getFAType()))
 				     .add("customerName", request.getCustomerName())
 				     .add("customerPhone", request.getCustomerPhoneNumber())
-				     .add("lifeSupport", "false")
+				     .add("lifeSupport", "false")  // need to add this to CCB
 				     .add("currentMeter", factory.createObjectBuilder()
-				    	 .add("meterId", request.getMeterBadgeNumber())
-					     .add("removeMeter", "false") 	// is this step 1?
-					     .add("performDeviceTest", "null")  // is this step 2?
-					     .add("compoundMeter", "false") // How to tell we have a compound meter? Registers is of type Registers, need to deal with that
-					     .add("readDateTime", "true") // bug on Mike's side
-					     .add("size", factory.createObjectBuilder().add("code", "A")) // needs to be the code, not descr request.getMeterSize()
-					     .add("register1", factory.createObjectBuilder() //Registers is of type Registers, need to deal with that
-				    		 .add("reading", "170")
-				    		 .add("dials", "4")
-				    		 .add("miu", "1491097636")
-				    		 .add("readType", factory.createObjectBuilder().add("code", "60"))
+				    	 .add("meterId", request.getMeterBadgeNumber())  // need to add meter id, not badge number
+					     .addNull("removeMeter") 	// always null
+					     .addNull("performDeviceTest")  // always null
+					     .add("compoundMeter", "false") // Need to add logic that if more than one register, compound = true
+					     .addNull("readDateTime") // bug on Mike's side, set it to null
+					     .add("size", factory.createObjectBuilder()
+					    	 .add("code", request.getRegisters().getRegisterSize())) // needs to be the code, not descr request.getMeterSize() - can this be register1.registerSize?
+					    	 .add("register1", factory.createObjectBuilder() //Registers is of type Registers, need to deal with that
+				    		 .add("reading", "170") // current reading? 
+				    		 .add("dials", "4") // need to add
+				    		 .add("miu", request.getRegisters().getMIU().toString()) 
+				    		 .add("readType", factory.createObjectBuilder().add("code", "60")) 
 				    		 .add("mrSource", factory.createObjectBuilder().add("code", "MTR-LEAK4"))
 				    		 .add("size", factory.createObjectBuilder().add("code", "A")) 
 				    		 .add("lowReadThreshold", "256")
 				    		 .add("highReadThreshold","357"))
-				    	 //.add("register2", "null")
-				    		 .addNull("register2")
-				    	 //.add("deviceTest", "null")) // must be a true null
-				    	 	.addNull("deviceTest"))
-				     //.add("installMeter", "null")
-				     .addNull("installMeter")
+				    		 .addNull("register2") // if compound = true, then we will have data for this, so check for null first
+				    	 	 .addNull("deviceTest"))  // always null
+				     .addNull("installMeter") // always null
 				     .add("streetAddress", request.getServiceAddress())
-				     .add("faInstructions", "faInstructions")
-				     .add("faComments", "faComments")
-				     .add("spLocationDetails", "spLocationDetails")
+				     .add("faInstructions", request.getInstructions()) 
+				     .add("faComments", "faComments") // always null
+				     .addNull("spLocationDetails") // always null
 				     .add("spType", request.getServicePointType())
 				     .add("premiseType", request.getPremiseType())
 				     .add("township", request.getTownship())
 				     .add("cityLimit", request.getCityLimit())
 				     .add("useClass", request.getUseClass())
 				     .add("postal", request.getZipCode())
-				     .add("faRemark", factory.createObjectBuilder().add("code","X-NOTES-CM"))
-				     .add("spSourceStatus", factory.createObjectBuilder().add("code","C"))
+				     .add("faRemark", factory.createObjectBuilder().add("code","X-NOTES-CM")) // set this to null, only get this from CW
+				     .add("spSourceStatus", factory.createObjectBuilder().add("code","C")) // need to send the code, not the descr
 				     .add("disconnectLocation", factory.createObjectBuilder().add("code","METR"))
-				     //.add("adjustmentType", "null")
 				     .addNull("adjustmentType")
-				     //.add("letterValue", "null")
 				     .addNull("letterValue")
-				     //.add("toDoValue", "null")
-				     .addNull("toDoValue")
-				     .add("workOrderId", "1234"))
-				     .add("workOrder", factory.createObjectBuilder().add("workOrderId", "woID")
-				    		 .add("description", "Meter - Leaking - Check and Repair")
+				     .addNull("toDoValue") 
+				     .add("workOrderId", "1234")) // should always be null, unless this is an update.
+				     .add("workOrder", factory.createObjectBuilder().addNull("workOrderId")  // should always be null
+				    		 .add("description", request.getDescription()) 
 				    		 .add("supervisor", "null")
 				    		 .add("requestedBy", "null")
 				    		 .add("initiatedBy", "null")
@@ -231,14 +307,14 @@ public class HandleCCBFADataInterfaceBean_Impl implements
 				    		 .add("location", "null")
 				    		 .add("projectStartDate", "2014-11-17")
 				    		 .add("projectFinishDate", "2014-12-01")
-				    		 .add("priority", "50")
+				    		 .add("priority", "50") // pass this null 
 				    		 .add("numDaysBefore", "1")
 				    		 .add("woCategory", "null")
-				    		 .add("status", "Initiated")
-				    		 .add("woTemplateId", "2")
-				    		 .add("woAddress", "604 SARVER CT")
-				    		 .add("woXCoordinate", "35.764184343")
-				    		 .add("woYCoordinate", "-78.65269062"))
+				    		 .add("status", request.getStatus()) // need a crosswalk here?  "Initiated" vs. "Pending" this might bomb out b/c 
+				    		 .add("woTemplateId", "2") // will we need to look this up?
+				    		 .add("woAddress", request.getServiceAddress())
+				    		 .add("woXCoordinate", request.getXCoordinate())
+				    		 .add("woYCoordinate", request.getYCoordinate()))
 				     .build();
 			
 			// ugly print the json

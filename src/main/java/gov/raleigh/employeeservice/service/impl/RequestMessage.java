@@ -210,7 +210,7 @@ public class RequestMessage {
     @XmlElement(name = "MeterBadgeNumber", required = true)
     protected BigInteger meterBadgeNumber;
     @XmlElement(name = "Registers", required = true)
-    protected String registers;
+    protected Registers registers;
 
     /**
      * Gets the value of the faType property.
@@ -1036,7 +1036,7 @@ public class RequestMessage {
      *     {@link Registers }
      *     
      */
-    public String getRegisters() {
+    public Registers getRegisters() {
         return registers;
     }
 
@@ -1048,7 +1048,7 @@ public class RequestMessage {
      *     {@link Registers }
      *     
      */
-    public void setRegisters(String value) {
+    public void setRegisters(Registers value) {
         this.registers = value;
     }
 
