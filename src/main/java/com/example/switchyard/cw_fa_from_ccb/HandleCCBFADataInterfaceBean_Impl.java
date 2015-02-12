@@ -3,24 +3,20 @@ package com.example.switchyard.cw_fa_from_ccb;
 import gov.raleigh.employeeservice.service.impl.RequestMessage;
 
 import java.io.StringReader;
+import java.math.BigInteger;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import javax.inject.Inject;
 import javax.json.Json;
 import javax.json.JsonBuilderFactory;
 import javax.json.JsonObject;
-import javax.json.JsonValue;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 
 import org.switchyard.component.bean.Reference;
 import org.switchyard.component.bean.Service;
-
-import com.fasterxml.jackson.jr.ob.JSON;
-
 
 
 @Service(HandleCCBFADataInterface.class)
@@ -31,93 +27,298 @@ public class HandleCCBFADataInterfaceBean_Impl implements
 	@Reference
 	private InvokeCWCreateWOServiceInterface invokeCWCreateWOServiceInterface;
 	
+	@Inject
+	@Reference
+	private InvokeCWUpdateWOServiceInterface invokeCWUpdateWOServiceInterface;
+
+	@Inject
+	@Reference
+	private InvokeCWDeleteWOServiceInterface invokeCWDeleteWOServiceInterface;
+	
 	@Override
 	public String getMessage(String messagebody) {
 		String woID = "";
+		String canceledStatus = "Canceled";
 		try {
 			JAXBContext jaxc = JAXBContext.newInstance("gov.raleigh.employeeservice.service.impl");
 			Unmarshaller unmarshaller = jaxc.createUnmarshaller();
 			StringReader reader = new StringReader(messagebody);
 			RequestMessage request = (RequestMessage) unmarshaller.unmarshal(reader);
+			
+			String FAType = request.getFAType();
+			String instructions = request.getInstructions();
+
+			
+			BigInteger externalID = request.getExternalID();
+			
+			String statusIn = request.getStatus();
+			
+			if (statusIn .equals(canceledStatus)){
+				 statusIn = "CANCEL";
+			}
+				else {
+					statusIn = request.getStatus();
+				}		
+			
+			if (instructions == null){
+				instructions = " ";
+			}
+			
+			String comments = " ";
+			
+			String spLocationDetail = request.getMeterLocation();
+			
+			if (spLocationDetail == null)
+				spLocationDetail = " ";
+			
+			String customerPhone = request.getCustomerPhoneNumber();
+			if (customerPhone == null)
+				customerPhone = " ";
+			
+			System.out.println("FAType " + FAType);
+			System.out.println("Instructions " + instructions);
+			System.out.println("Status In " + statusIn);
+			System.out.println("Comments " + comments); 
+			System.out.println("SP Location Detail " + spLocationDetail);
+			System.out.println("Customer Phone " + customerPhone);
+			System.out.println("ExternalID "+ externalID);			
+		    System.out.println("Field Activity ID " + request.getFieldActivityId());
+		    System.out.println("CustomerName " + request.getCustomerName());
+		    System.out.println("MeterId " +  request.getMeterID()); 
+		    System.out.println("Badge Number " + request.getMeterBadgeNumber());
+			System.out.println("Meter Size " + request.getMeterSize());
+		    System.out.println("SPId "+ request.getServicePointId());
+			System.out.println("Register1");
+		    System.out.println("Reading " + request.getRegisters().getLastMeterRead().toBigInteger());
+		    System.out.println("Dials " +  request.getRegisters().getDials());
+		    System.out.println("Miu " + request.getRegisters().getMIU());
+		    System.out.println("ReadType " + request.getRegisters().getReadType());
+		    System.out.println("MrSource " + request.getRegisters().getMrSource());
+		    System.out.println("Size " + request.getRegisters().getRegisterSize()); 
+		    
+		    if (externalID  == null) {
+		    System.out.println("LowReadThreshold " + request.getRegisters().getLowMeterReadingWarning().toBigInteger());
+		    System.out.println("HighReadThreshold " + request.getRegisters().getHighMeterReadingWarning().toBigInteger());
+		    };
+		    
+		    System.out.println("StreetAddress " + request.getServiceAddress());
+		    System.out.println("SPType " + request.getServicePointType());
+		    System.out.println("PremiseType " + request.getPremiseType());
+		    System.out.println("Township " + request.getTownship());
+		    System.out.println("CityLimit " + request.getCityLimit());
+		    System.out.println("UseClass " + request.getUseClass());
+		    System.out.println("Postal " + request.getZipCode());
+		    System.out.println("FaRemark " + "X-NOTES-CM");
+		    System.out.println("SPSourceStatus " + request.getServicePointSourceStatus().substring(0, 1));
+		    System.out.println("DisconnectLocation " + "METR");
+		    System.out.println("WorkOrderId " + "1");
+		    System.out.println("Description " + request.getDescription());
+		    System.out.println("InitiateDate " + request.getScheduledDate());
+		    System.out.println("WoAddress " + request.getServiceAddress());
+		    System.out.println("WoXCoordinate " + request.getXCoordinate());
+		    System.out.println("WoYCoordinate " + request.getYCoordinate());
+
+			
+			if (externalID != null ){
+				System.out.println("This is an Update");
+				Map config = new HashMap();
+				JsonBuilderFactory factory = Json.createBuilderFactory(config);
+				String meterHeader = "MeterHeader";
+				JsonObject value = factory.createObjectBuilder()
+						.add(meterHeader,  factory.createObjectBuilder()
+					     .add("FieldActivityId", request.getFieldActivityId())
+					     .add("FieldActivityType", factory.createObjectBuilder()
+					     .add("Code", request.getFAType()))
+					     .add("CustomerName", request.getCustomerName())
+					     .add("CustomerPhone", customerPhone)
+					     .add("LifeSupport", "false")
+     				     .add("CurrentMeter", factory.createObjectBuilder()
+					    	 .add("MeterId", request.getMeterID())
+					    	 .add("BadgeNumber", request.getMeterBadgeNumber())
+						     .add("RemoveMeter", "false") 
+						     .addNull("IsDeviceTest") 	
+						     .add("CompoundMtr", "false") // How to tell we have a compound meter? Registers is of type Registers, need to deal with that
+						     .add("ReadDateTime", "true") // bug on Mike's side
+						     .add("Size", factory.createObjectBuilder().add("Code", request.getMeterSize()))
+						    	 .add("Register1", factory.createObjectBuilder() //Registers is of type Registers, need to deal with that
+					    		 .add("Reading", request.getRegisters().getLastMeterRead().toBigInteger())
+					    		 .add("Dials", request.getRegisters().getDials())
+					    		 .add("Miu", request.getRegisters().getMIU())
+					    		 .add("ReadType", factory.createObjectBuilder().add("Code", request.getRegisters().getReadType()))
+				 				 .add("MrSource", factory.createObjectBuilder().add("Code", request.getRegisters().getMrSource()))	    		 
+					    		 .add("Size", factory.createObjectBuilder().add("Code", request.getRegisters().getRegisterSize()))) 
+					    	 //.add("Register2", "null")
+					    		 .addNull("Register2")
+					    	 //.add("DeviceTest", "null")) // must be a true null
+					    	 	.addNull("DeviceTest"))
+					     //.add("installMeter", "null")
+					     .addNull("InstallMeter")
+					     .add("StreetAddress", request.getServiceAddress())
+					     .add("FAInstructions", instructions)
+					     .add("FAComments", comments)
+    		//		     .add("SPLocationDetails", request.getMeterLocation())
+    				     .add("SPLocationDetails", spLocationDetail)
+					     .add("SPType", request.getServicePointType())
+					     .add("PremiseType", request.getPremiseType())
+					     .add("Township", request.getTownship())
+					     .add("CityLimit", request.getCityLimit())
+					     .add("UseClass", request.getUseClass())
+					     .add("Postal", request.getZipCode())
+					     .add("FARemark", factory.createObjectBuilder().add("Code","X-NOTES-CM"))
+			    	     .add("SPSourceStatus", factory.createObjectBuilder().add("Code", request.getServicePointSourceStatus().substring(0, 1)))
+					     .add("DisconnectLocation", factory.createObjectBuilder().add("Code","METR"))
+					     .addNull("DispatchGroup")
+					     .add("SPId", request.getServicePointId())
+					     .addNull("StockLocation")
+					     .addNull("AdjustmentType")
+					     .addNull("LetterType")
+					     .addNull("ToDoType")
+					     .addNull("AdjustmentValue")
+					     .addNull("LetterValue")
+					     .addNull("ToDoValue")
+					     .add("WorkOrderId", request.getExternalID()))
+					     .add("WorkOrder", factory.createObjectBuilder().add("WorkOrderId", request.getExternalID())
+					    		 .add("Description", request.getDescription())
+					    		 .add("Supervisor", "")
+					    		 .add("RequestedBy", "")
+					    		 .add("InitiatedBy", "")
+					    		 .add("InitiateDate", request.getScheduledDate())
+					    		 .add("Location", "")
+					    		 .add("ProjectStartDate", "")
+					    		 .add("ProjectFinishDate", "")
+					    		 .add("Priority", "")
+					    		 .add("NumDaysBefore", "1")
+					    		 .add("WoCategory", "")
+					    		 .add("Status", statusIn)
+					    		 .add("WoTemplateId", "257702")
+					    		 .add("WoAddress", request.getServiceAddress())
+					    		 .add("WoXCoordinate", request.getXCoordinate())
+					    		 .add("WoYCoordinate", request.getYCoordinate()))
+					     .build();
+				
+				       System.out.println("External ID " + externalID);
+				       System.out.println("Status In " + statusIn +"\n");
+				
+					   JsonObject response = invokeCWUpdateWOServiceInterface.updateWO(value);	
+					   System.out.println("response from update " + response);
+					   System.out.println("json update sample " + value +"\n");
+			
+				    return "<ResponseMessage><WorkOrderId>" + request.getExternalID() + "</WorkOrderId></ResponseMessage>";
+
+			}				    
+							
+				
+			//	if (externalID != null && statusIn.trim().equals(canceledStatus)){
+			//		Map config = new HashMap();
+			//		JsonBuilderFactory factory = Json.createBuilderFactory(config);
+			//		JsonObject value = factory.createObjectBuilder()
+			//		.add("workOrder", factory.createObjectBuilder().add("workOrderId", request.getExternalID()))
+			//		.build();  		
+			//		System.out.println("json cancelled before " + value +"\n");
+			//		System.out.println("json cancelled before " );
+			//		JsonObject response = invokeCWDeleteWOServiceInterface.deleteWO(request.getExternalID());	
+			//		System.out.println("response from canceled " + response);
+			//		System.out.println("json cancelled after ");
+			
+			//	return "<ResponseMessage><WorkOrderId>" + request.getExternalID() + "</WorkOrderId></ResponseMessage>";
+			// } 
 						
+
 			
+			//  Cityworks expects json, so we need to convert CCB xml to json
+			//  Build the json object from the unmarshalled xml message from CCB
 			
+			if (externalID == null) {
+			System.out.println("This is an Insert");	
 			Map config = new HashMap();
 			JsonBuilderFactory factory = Json.createBuilderFactory(config);
+			String meterHeader = "MeterHeader";
 			JsonObject value = factory.createObjectBuilder()
-					.add("meterHeader",  factory.createObjectBuilder()
-				     .add("fieldActivityId", request.getFieldActivityId()) 
-				     .add("fieldActivityType", factory.createObjectBuilder()
-				     .add("code", request.getFAType()))
-				     .add("customerName", request.getCustomerName())
-				     .add("customerPhone", (JsonValue) ((request.getCustomerPhoneNumber() == null) ? JsonValue.NULL : request.getCustomerPhoneNumber()))
-				     .add("lifeSupport", "false")  // need to add this to CCB
-				     .add("currentMeter", factory.createObjectBuilder()
-				    	 .add("meterId", request.getMeterBadgeNumber())  // need to add meter id, not badge number
-					     .addNull("removeMeter") 	// always null
-					     .addNull("performDeviceTest")  // always null
-					     .add("compoundMeter", "false") // Need to add logic that if more than one register, compound = true
-					     .addNull("readDateTime") // bug on Mike's side, set it to null
-					     .add("size", factory.createObjectBuilder()
-					    	 .add("code", request.getRegisters().getRegisterSize())) // needs to be the code, not descr request.getMeterSize() - can this be register1.registerSize?
-					    	 .add("register1", factory.createObjectBuilder() //Registers is of type Registers, need to deal with that
-				    		 .add("reading", request.getRegisters().getLastMeterRead().toBigInteger()) // current reading? 
-				    		 .add("dials", "4") // need to add
-				    		 .add("miu", request.getRegisters().getMIU().toString()) 
-				    		 .add("readType", factory.createObjectBuilder().add("code", "60")) 
-				    		 .add("mrSource", factory.createObjectBuilder().add("code", "MTR-LEAK4"))
-				    		 .add("size", factory.createObjectBuilder().add("code", "A")) 
-				    		 .add("lowReadThreshold", request.getRegisters().getLowMeterReadingWarning().toBigInteger())
-				    		 .add("highReadThreshold",request.getRegisters().getHighMeterReadingWarning().toBigInteger()))
-				    		 .addNull("register2") // if compound = true, then we will have data for this, so check for null first
-				    	 	 .addNull("deviceTest"))  // always null
-				     .addNull("installMeter") // always null
-				     .add("streetAddress", request.getServiceAddress())
-				     .add("faInstructions", request.getInstructions()) 
-				     .add("faComments", "faComments") // always null
-				     .addNull("spLocationDetails") // always null
-				     .add("spType", request.getServicePointType())
-				     .add("premiseType", request.getPremiseType())
-				     .add("township", request.getTownship())
-				     .add("cityLimit", request.getCityLimit())
-				     .add("useClass", request.getUseClass())
-				     .add("postal", request.getZipCode())
-				     .add("faRemark", factory.createObjectBuilder().addNull("code")) // set this to null, only get this from CW
-				     .add("spSourceStatus", factory.createObjectBuilder().add("code","C")) // need to send the code, not the descr
-				     .add("disconnectLocation", factory.createObjectBuilder().add("code","METR"))
-				     .addNull("adjustmentType")
-				     .addNull("letterValue")
-				     .addNull("toDoValue") 
-				     .add("workOrderId", "1234")) // should always be null, unless this is an update.
-				     .add("workOrder", factory.createObjectBuilder().addNull("workOrderId")  // should always be null
-				    		 .add("description", request.getDescription()) 
-				    		 .add("supervisor", "null")
-				    		 .add("requestedBy", "null")
-				    		 .add("initiatedBy", "null")
-				    		 .add("initiateDate", "2014-11-17")
-				    		 .add("location", "null")
-				    		 .add("projectStartDate", "2014-11-17")
-				    		 .add("projectFinishDate", "2014-12-01")
-				    		 .add("priority", "50") // pass this null 
-				    		 .add("numDaysBefore", "1")
-				    		 .add("woCategory", "null")
-				    		 .add("status", request.getStatus()) // need a crosswalk here?  "Initiated" vs. "Pending" this might bomb out b/c 
-				    		 .add("woTemplateId", "2") // will we need to look this up?
-				    		 .add("woAddress", request.getServiceAddress())
-				    		 .add("woXCoordinate", request.getXCoordinate())
-				    		 .add("woYCoordinate", request.getYCoordinate()))
+					.add(meterHeader,  factory.createObjectBuilder()
+				     .add("FieldActivityId", request.getFieldActivityId())
+				     .add("FieldActivityType", factory.createObjectBuilder().add("Code", request.getFAType()))
+				     .add("CustomerName", request.getCustomerName())
+				     .add("CustomerPhone", customerPhone)
+				     .add("LifeSupport", "false")
+				     .add("CurrentMeter", factory.createObjectBuilder()
+				    	 .add("MeterId", request.getMeterID())
+				    	 .add("BadgeNumber", request.getMeterBadgeNumber())
+					     .add("RemoveMeter", "false")
+					     .addNull("IsDeviceTest") 
+					     .add("CompoundMtr", "false") // How to tell we have a compound meter? Registers is of type Registers, need to deal with that
+					     .add("ReadDateTime", "true") // bug on Mike's side
+					     .add("Size", factory.createObjectBuilder().add("Code", request.getMeterSize()))
+					    	 .add("Register1", factory.createObjectBuilder() //Registers is of type Registers, need to deal with that
+				    		 .add("Reading", request.getRegisters().getLastMeterRead().toBigInteger())
+				    		 .add("Dials", request.getRegisters().getDials())
+				    		 .add("Miu", request.getRegisters().getMIU())
+				    		 .add("ReadType", factory.createObjectBuilder().add("Code", request.getRegisters().getReadType()))
+				    		 .add("MrSource", factory.createObjectBuilder().add("Code", request.getRegisters().getMrSource()))
+				    		 .add("Size", factory.createObjectBuilder().add("Code", request.getRegisters().getRegisterSize())) 
+				    	     .add("LowReadThreshold", request.getRegisters().getLowMeterReadingWarning().toBigInteger())
+				    		 .add("HighReadThreshold", request.getRegisters().getHighMeterReadingWarning().toBigInteger()))
+				    	 //.add("Register2", "null")
+				    		 .addNull("Register2")
+				    	 //.add("DeviceTest", "null")) // must be a true null
+				    	 	.addNull("DeviceTest"))
+				     //.add("InstallMeter", "null")
+				     .addNull("InstallMeter")
+				     .add("StreetAddress", request.getServiceAddress())
+				     .add("FAInstructions", instructions)
+				     .add("FAComments", comments)
+                     .add("SPLocationDetails", spLocationDetail)
+				     .add("SPType", request.getServicePointType())
+				     .add("PremiseType", request.getPremiseType())
+				     .add("Township", request.getTownship())
+				     .add("CityLimit", request.getCityLimit())
+				     .add("UseClass", request.getUseClass())
+				     .add("Postal", request.getZipCode())
+				     .add("FARemark", factory.createObjectBuilder().add("Code","X-NOTES-CM"))
+				     .add("SPSourceStatus", factory.createObjectBuilder().add("Code", request.getServicePointSourceStatus().substring(0, 1)))
+				     .add("DisconnectLocation", factory.createObjectBuilder().add("Code","METR"))
+				     .addNull("DispatchGroup")
+				     .add("SPId", request.getServicePointId())
+				     .addNull("StockLocation")
+				     .addNull("AdjustmentType")
+				     .addNull("LetterType")
+	                 .addNull("ToDoType")
+				     .addNull("AdjustmentValue")
+				     .addNull("LetterValue")
+				     .addNull("ToDoValue")
+				     .add("WorkOrderId", "1"))
+				     .add("WorkOrder", factory.createObjectBuilder().add("WorkOrderId", "1")
+				    		 .add("Description", request.getDescription())
+				    		 .add("Supervisor", "")
+				    		 .add("RequestedBy", "")
+				    		 .add("InitiatedBy", "")
+				    		 .add("InitiateDate", request.getScheduledDate())
+				    		 .add("Location", "")
+				    		 .add("ProjectStartDate", "")
+				    		 .add("ProjectFinishDate", "")
+				    		 .add("Priority", "")
+				    		 .add("NumDaysBefore", "1")
+				    		 .add("WoCategory", "")
+				       		 .add("SubmitTo", "")
+				    		 .add("Status", "Initiated")
+				    		 .add("WoTemplateId", "257702")
+				    		 .add("WoAddress", request.getServiceAddress())
+				    		 .add("WoXCoordinate", request.getXCoordinate())
+				    		 .add("WoYCoordinate", request.getYCoordinate()))
 				     .build();
 			
 			// ugly print the json
 			System.out.println("json sample " + value +"\n");
 			
 			JsonObject response = invokeCWCreateWOServiceInterface.createWO(value);
+			
 			woID = response.getString("message");
 			
 			System.out.println("response " + response +"\n" + "woID = " + woID);
-			
+			}	
+
 
 		} catch (JAXBException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} 
 
